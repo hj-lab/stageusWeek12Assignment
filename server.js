@@ -21,7 +21,9 @@ app.use("/board", boardApi)
 const commentApi = require("./src/routers/comment")
 app.use("/comment", commentApi)
 
-
+// 테스트용
+const testApi = require("./src/routers/test")
+app.use("/test", testApi)
 
 // 웹서버
 app.listen(port, () => {

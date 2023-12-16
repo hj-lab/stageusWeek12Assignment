@@ -1,10 +1,11 @@
 const router = require("express").Router()
+const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel } = require('../modules/check');
 
 // 회원가입, 로그인, 로그아웃, id찾기, pw찾기, 정보 보기(나, 다른사람), 내 정보 수정, 회원 탈퇴
 
 // 회원가입 기능
 router.post("/", (req, res) => {
-     // signUp에서 값 가져옴
+     // signUp에서 값 가져옴r
      const { id, pw, name, birth, tel } = req.body
 
      // 프론트에 전달할 값 미리 만들기
@@ -16,11 +17,11 @@ router.post("/", (req, res) => {
 
     try{
         // 예외처리
-        if (!id.trim() || id.length < 4 || id.length > 10) throw new Error("ID는 공백 제외 4~10자여야합니다.")
-        if(!pw.trim() || pw.length < 8 || pw.length > 15 || !(/[a-zA-Z]/.test(pw)) || !(/\d/.test(pw)) ) throw new Error("PW는 공백 제외, 영문자 숫자 포함 8~15자여야합니다.")
-        if (!name.trim() || name.length < 2 || name.length > 5) throw new Error("이름은 공백 제외 2~5자여야합니다.")
-        if (!birth.trim()) throw new Error("생년월일을 입력하세요.")
-        if (!tel.trim() || !(/^\d+$/.test(tel))) throw new Error("전화번호는 숫자만 입력해야합니다.")
+        checkId(id)
+        checkPw(pw)
+        checkName(name)
+        checkBirth(birth)
+        checkTel(tel)
         
         // DB통신
        // const newAccount = { id, pw, name, birth, tel }
@@ -56,8 +57,8 @@ router.post("/login", (req, res) => {
     try{
       
         // id, pw 예외처리
-        if(!id.trim() || id.length < 4 || id.length > 10) throw new Error("ID는 공백 제외 4~10자여야합니다.")
-        if(!pw.trim() || pw.length < 8 || pw.length > 15 || !(/[a-zA-Z]/.test(pw)) || !(/\d/.test(pw)) ) throw new Error("PW는 공백 제외, 영문자 숫자 포함 8~15자여야합니다.")    
+        checkId(id)
+        checkPw(pw)
         
         // DB 통신 - id, pw와 같은 사용자가 있는지
         // idx, id, pw, name, birth, tel 가져옴
@@ -93,8 +94,6 @@ router.post("/login", (req, res) => {
 
 // 로그아웃 기능
 router.delete("/logout", (req, res) =>{
-     // 세션값 받아오기
-     const sessionIdx = req.session.userIdx;
      // session값 가져오기 -> 필요없나?
      const { id, pw, name, birth, tel } = req.session; 
 
@@ -106,7 +105,7 @@ router.delete("/logout", (req, res) =>{
 
     try{
         // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
+        checkSession(req)
 
         // session에서 삭제
         req.session.destroy(err => {
@@ -138,9 +137,9 @@ router.get("/find/id", (req, res) =>{
 
     try{
         // 예외처리
-        if (!name.trim() || name.length < 2 || name.length > 5) throw new Error("이름은 공백 제외 2~5자여야합니다.")
-        if (!birth.trim()) throw new Error("생년월일을 입력하세요.")
-        if (!tel.trim() || !(/^\d+$/.test(tel))) throw new Error("전화번호는 숫자만 입력해야합니다.")
+        checkName(name)
+        checkBirth(birth)
+        checkTel(tel)
 
         // DB 통신 (DB에서 가져온 값이 findId에서 가져온 값이랑 같은지 비교)
         // id반환
@@ -173,10 +172,10 @@ router.get("/find/pw", (req, res) => {
 
     try{
         // 예외처리
-        if (!id.trim() || id.length < 4 || id.length > 10) throw new Error("ID는 공백 제외 4~10자여야합니다.")
-        if (!name.trim() || name.length < 2 || name.length > 5) throw new Error("이름은 공백 제외 2~5자여야합니다.")
-        if (!birth.trim()) throw new Error("생년월일을 입력하세요.")
-        if (!tel.trim() || !(/^\d+$/.test(tel))) throw new Error("전화번호는 숫자만 입력해야합니다.")
+        checkId(id)
+        checkName(name)
+        checkBirth(birth)
+        checkTel(tel)
 
         // db 통신
 
@@ -209,7 +208,7 @@ router.get("/", (req, res) => {
 
     try{
         //예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
+        checkSession(req)
 
         //db통신
 
@@ -239,7 +238,6 @@ router.get("/", (req, res) => {
 // 내 정보 수정 기능 - path parameter ('나' 만 가져와야하니까)
 router.put("/", (req, res) => {
      // modifyMyInform에서 수정할 정보 가져옴
-     const sessionIdx = req.session.userIdx; // 세션 존재하는지 확인 해야함
      const { pw, name, birth, tel} = req.body;
 
      // 프론트에 전달할 값 미리 만들기
@@ -251,11 +249,11 @@ router.put("/", (req, res) => {
 
     try{
         // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!pw.trim() || pw.length < 8 || pw.length > 15 || !(/[a-zA-Z]/.test(pw)) || !(/\d/.test(pw)) ) throw new Error("PW는 공백 제외, 영문자 숫자 포함 8~15자여야합니다.")
-        if (!name.trim() || name.length < 2 || name.length > 5) throw new Error("이름은 공백 제외 2~5자여야합니다.")
-        if (!birth.trim()) throw new Error("생년월일을 입력하세요.")
-        if (!tel.trim() || !(/^\d+$/.test(tel))) throw new Error("전화번호는 숫자만 입력해야합니다.")
+        checkSession(req)
+        checkPw(pw)
+        checkName(name)
+        checkBirth(birth)
+        checkTel(tel)
 
         // db 통신 -> db data를 수정할 정보로 바꿔줌
         // 
@@ -286,8 +284,6 @@ router.put("/", (req, res) => {
 
 // 회원 탈퇴 기능
 router.delete("/", (req, res) =>{
-    const sessionIdx = req.session.userIdx;
-       
         // 프론트에 전달할 값 미리 만들기
         const result = {
             success : false,
@@ -295,7 +291,8 @@ router.delete("/", (req, res) =>{
         };
 
     try{
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
+        // 예외처리
+        checkSession(req)
 
         // DB에서 삭제
         //

@@ -1,12 +1,10 @@
 const router = require("express").Router()
+const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx } = require('../modules/check');
 
 // 게시글 쓰기, 읽기(전체, 개별), 수정, 삭제
 
 // 게시글 쓰기 기능
 router.post("/", (req, res) =>{
-    // 세션값 받아오기
-    const sessionIdx = req.session.userIdx;
-
     // 글 내용 받아오기
     const {title, contents} = req.body
 
@@ -19,11 +17,10 @@ router.post("/", (req, res) =>{
 
     try{
         // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-
-        if (!title.trim()) throw new Error("제목을 입력하십시오.")
-
-        if (!contents.trim()) throw new Error("내용을 입력하십시오.")
+        checkSession(req)
+        checkBlank(title)
+        checkBlank(contents)
+        
 
         // db 통신
         // board table에 등록
@@ -51,9 +48,6 @@ router.post("/", (req, res) =>{
 
 // 전체 목록 보는 board
 router.get("/all", (req,res) => {
-     // 세션값 받아오기
-     const sessionIdx = req.session.userIdx;
-
     // 프론트에 전달할 값 미리 만들기
     const result = {
         success : false,
@@ -62,7 +56,7 @@ router.get("/all", (req,res) => {
     };
     try{
         // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
+        checkSession(req)
 
         // db에서 전체 게시글 내용 가져옴
 
@@ -88,8 +82,6 @@ router.get("/all", (req,res) => {
 
 // 개별 post 보는 showPost - path parameter (어떤 자원을 특정해서 보여줄때)
 router.get("/:idx", (req, res) => {
-    // 세션값 받아오기
-    const sessionIdx = req.session.userIdx;
     // 클릭한 게시글의 boardnum 가져옴
     const boardIdx = req.params.idx;
     
@@ -102,8 +94,9 @@ router.get("/:idx", (req, res) => {
 
     try{
         // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!boardIdx || boardIdx == "" || boardIdx == undefined) throw new Error("해당 게시글을 찾을 수 없습니다.")
+        checkSession(req)
+        checkBlank(contents)
+
 
         // db에서 boardnum_pk에 해당하는 것의
         // title, accountid_fk, contents, createAt 가져옴
@@ -131,11 +124,9 @@ router.get("/:idx", (req, res) => {
 
 // 게시글 수정 기능 - path parameter (게시글 번호 받아와서 그거 수정)
 router.put("/:idx", (req,res) => {
-    // 세션값 받아오기
-    const sessionIdx = req.session.userIdx;
 
     // modifyPost에서 수정할 title, content 가져옴
-    const boardnumIdx = req.params.idx;
+    const boardIdx = req.params.idx;
     const { title, contents } = req.body
 
 
@@ -147,10 +138,10 @@ router.put("/:idx", (req,res) => {
     };
 
     try{
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!boardIdx || boardIdx == "" || boardIdx == undefined) throw new Error("해당 게시글을 찾을 수 없습니다.")
-        if(!title || title == "" || title == undefined ) throw new Error("제목을 입력하십시오.")
-        if(!contents || contents == "" || contents == undefined) throw new Error("내용을 입력하십시오.")
+        checkSession(req)
+        checkIdx(boardIdx)
+        checkBlank(title)
+        checkBlank(contents)
         
         // DB 통신 -> table의 값 바꾸기
 
@@ -177,9 +168,6 @@ router.put("/:idx", (req,res) => {
 
 // 게시글 삭제 기능 - path parameter
 router.delete("/:idx", (req, res) =>{
-     // 세션값 받아오기
-     const sessionIdx = req.session.userIdx;
-
      // delete할 post 가져오기
      const boardIdx = req.params.idx;
 
@@ -190,9 +178,10 @@ router.delete("/:idx", (req, res) =>{
      };
 
     try{
-           // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!boardIdx || boardIdx == "" || boardIdx == undefined) throw new Error("해당 게시글을 찾을 수 없습니다.")
+        // 예외처리
+        checkSession(req)
+        checkIdx(boardIdx)
+
 
         // db 통신 -> id가 존재하고 id=accountid_fk이면  boardnum_pk 해당하는 게시글 삭제
 

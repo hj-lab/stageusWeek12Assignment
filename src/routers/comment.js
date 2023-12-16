@@ -1,11 +1,10 @@
 const router = require("express").Router() 
+const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx } = require('../modules/check');
 
 // 댓글 쓰기, 읽기, 수정, 삭제
 
 // 댓글 쓰기 기능
 router.post("/", (req, res) =>{
-    // 세션값 받아오기
-    const sessionIdx = req.session.userIdx;
     // 글 내용 받아오기
     const {contents, boardIdx} = req.body
 
@@ -18,9 +17,9 @@ router.post("/", (req, res) =>{
 
     try{
         //예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!boardIdx || boardIdx == "" || boardIdx == undefined) throw new Error("해당 게시글을 찾을 수 없습니다.")
-        if(!contents || contents == "" || contents == undefined) throw new Error("내용을 입력하세요.")
+        checkSession(req)
+        checkIdx(boardIdx)
+        checkBlank(contents)
 
         // db 통신 -> 
         // comment table에 등록
@@ -62,10 +61,9 @@ router.get("/:idx", (req, res) => {
 
     try{
         //예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!boardIdx || boardIdx == "" || boardIdx == undefined) throw new Error("해당 게시글을 찾을 수 없습니다.")
-        if(!commentIdx || commentIdx == "" || commentIdx == undefined) throw new Error("해당 댓글을 찾을 수 없습니다.")
-        
+        checkSession(req)
+        checkIdx(boardIdx)
+        checkIdx(commentIdx)
 
         // db 통신 -> boardnum_fk = boardnum 인 댓글 다 가져오기
 
@@ -92,8 +90,6 @@ router.get("/:idx", (req, res) => {
 
 // 댓글 수정 기능 - path parameter (댓글 번호 가져와서 그거 수정)
 router.put("/:idx", (req, res) => {
-    // 세션값 받아오기
-    const sessionIdx = req.session.userIdx;
     // 수정하고자 하는 댓글의 commentnum_pk 가져옴
     const commentIdx = req.params.idx;
     const contents  = req.body;
@@ -107,9 +103,9 @@ router.put("/:idx", (req, res) => {
 
     try{
         // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!commentIdx || commentIdx == "" || commentIdx == undefined) throw new Error("해당 댓글을 찾을 수 없습니다.")
-        if(!contents || contents == "" || contents == undefined) throw new Error("내용을 입력하세요.")
+        checkSession(req)
+        checkIdx(commentIdx)
+        checkBlank(contents)
 
         // db 통신 -> commentnum_pk에 해당하는 댓글 가져와서 contents 수정
 
@@ -133,8 +129,6 @@ router.put("/:idx", (req, res) => {
 
 // 댓글 삭제 기능 - path parameter
 router.delete("/:idx", (req, res) => {
-    // 세션값 받아오기
-    const sessionIdx = req.session.userIdx;
     const commentIdx = req.params.idx;
 
     // 프론트에 전달할 값 미리 만들기
@@ -145,9 +139,8 @@ router.delete("/:idx", (req, res) => {
 
     try{
         // 예외처리
-        // 예외처리
-        if(!sessionIdx || sessionIdx == "" || sessionIdx == undefined ) throw new Error("로그인 하십시오.")
-        if(!commentIdx || commentIdx == "" || commentIdx == undefined) throw new Error("해당 댓글을 찾을 수 없습니다.")
+        checkSession(req)
+        checkIdx(commentIdx)
        
         // db 통신 -> commentnum_pk에 해당하는 댓글 삭제
 
