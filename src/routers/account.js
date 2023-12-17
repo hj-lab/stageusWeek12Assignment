@@ -1,45 +1,57 @@
 const router = require("express").Router()
-const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel } = require('../modules/check');
+const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx, checkDuplicateId } = require('../modules/check');
+const conn = require("../../config/database")
 
 // 회원가입, 로그인, 로그아웃, id찾기, pw찾기, 정보 보기(나, 다른사람), 내 정보 수정, 회원 탈퇴
 
 // 회원가입 기능
-router.post("/", (req, res) => {
-     // signUp에서 값 가져옴r
-     const { id, pw, name, birth, tel } = req.body
+router.post("/", async(req, res) => {
+    // signUp에서 값 가져옴
+    const { id, pw, name, birth, tel } = req.body
 
-     // 프론트에 전달할 값 미리 만들기
-     const result = {
-         success : false,
-         message : '',
-         data : null
-     };
+    // 프론트에 전달할 값 미리 만들기
+    const result = {
+        success : false,
+        message : '',
+        data : null
+    };
 
-    try{
-        // 예외처리
-        checkId(id)
-        checkPw(pw)
-        checkName(name)
-        checkBirth(birth)
-        checkTel(tel)
-        
-        // DB통신
-       // const newAccount = { id, pw, name, birth, tel }
-       const dbResult = {
-            "id" : "성공했다"
+   try{
+       // 예외처리
+       checkId(id)
+       checkPw(pw)
+       checkName(name)
+       checkBirth(birth)
+       checkTel(tel)
+
+       // 비동기함수 query
+       const isDuplicateId = await checkDuplicateId(id);
+       if (isDuplicateId) {
+           res.status(400).send({ message: "중복된 id입니다." })
+           return;
        }
-        
-        // 통신의 값이 true면
-        result.success = true;
-        result.message = "회원가입 성공"
-        result.data = dbResult
+       
+       // DB통신
+       const sql = "INSERT INTO account(id, pw, name, birth, tel) VALUES(?, ?, ?, ?, ?)";
+       const values = [id, pw, name, birth, tel];
 
-    }catch(e){
-        result.message = e.message
-    }finally{
-        // 최종적으로 실행되는거 (try, catch 둘중 뭐든 실행하고 나면)
-        res.send(result)
-    }
+       conn.query(sql, values, (err, dbResult) => {
+           if(err){
+                result.message = "DB 통신 에러";
+                res.status(500).json(result);
+           }
+           else{
+                result.success = true
+                result.message = "DB 통신 성공"
+                result.data = dbResult
+                res.send(result)
+           }
+       })
+
+   }catch(e){
+       result.message = e.message
+       res.status(400).json(result);
+   }
 })
 
 // 로그인 기능
@@ -55,73 +67,80 @@ router.post("/login", (req, res) => {
     };
 
     try{
-      
         // id, pw 예외처리
         checkId(id)
         checkPw(pw)
         
         // DB 통신 - id, pw와 같은 사용자가 있는지
         // idx, id, pw, name, birth, tel 가져옴
+        const sql = "SELECT * FROM account WHERE id = ? AND pw = ?";
+        const values = [id, pw];
 
+        conn.query(sql, values, (err, rows) => {
+            if(err) {
+                result.message = "DB 통신 오류 발생";
+                res.status(500).json(result);
+                return;
+            }
+            if (!rows || rows.length === 0) {
+                result.message = "일치하는 사용자가 없습니다.";
+                res.status(400).json(result);
+                return;
+            }
+            // 일치하는 유저가 있을시 (성공시)
+            // 해당하는 유저의 정보를 담음 (id, pw, name ...)
+            const user = rows[0]
 
-        // 로그인 성공시
-        result.success = true;
-        result.message = "로그인 성공";
-        result.data = {
-            "id" : id,
-            "pw" : pw,
-            "name" : userName,
-            "birth" : birth, 
-            "tel" : tel
-        };
+            // 세션 등록
+            req.session.userIdx = user.accountnum_pk;
+            req.session.userId = user.id;
+            req.session.userPw = user.pw;
+            req.session.userName = user.name;
+            req.session.userBirth = user.birth;
+            req.session.userTel = user.tel;
 
-        // 세션 등록
-        req.session.userIdx = idx;
-        req.session.userId = id;
-        req.session.userPw = pw;
-        req.session.userName = userName;
-        req.session.userBirth = birth;
-        req.session.userTel = tel;
+            result.success = true;
+            result.message = "로그인 성공";
+            result.data = user
 
+            res.json(result);
+        })
+     
 
     }catch(e){
         result.message = e.message
-    }finally{
-        res.send(result)
+        res.status(400).json(result);
     }
-
 })
 
 // 로그아웃 기능
-router.delete("/logout", (req, res) =>{
-     // session값 가져오기 -> 필요없나?
-     const { id, pw, name, birth, tel } = req.session; 
+router.delete("/logout", (req, res) => {
+    const result = {
+        success: false,
+        message: ''
+    };
 
-     // 프론트에 전달할 값 미리 만들기
-     const result = {
-         success : false,
-         message : ''
-     };
+    try {
+        // 세션 존재 여부 확인 (이건 확인 못해봄..)
+        checkSession(req);
 
-    try{
-        // 예외처리
-        checkSession(req)
-
-        // session에서 삭제
+        // 세션 삭제
         req.session.destroy(err => {
-            if(err) throw new Error("세션 삭제 오류 발생")
+            if (err) {
+                result.message = "세션 삭제 오류 발생";
+                res.status(500).json(result);
+                return;
+            }
           
-            // 삭제 성공시
-            result.success = "true";
+            result.success = true;
             result.message = "로그아웃 되었습니다.";
-        })
-
-    }catch(e){
-        result.message = e.message
-    }finally{
-        res.send(result)
+            res.json(result);
+        });
+    } catch (e) {
+        result.message = e.message;
+        res.status(400).json(result);
     }
-}) 
+});
 
 // id 찾기 기능 - query string (특정한것 조회)
 router.get("/find/id", (req, res) =>{

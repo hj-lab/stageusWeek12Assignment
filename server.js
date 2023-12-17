@@ -2,6 +2,9 @@ const express = require("express");
 const session = require("express-session"); // 세션
 const app = express();
 const port = 8001;
+// mariadb 연결
+const maria = require("./config/database");
+maria.connect();
 
 app.use(express.json());
 
@@ -21,7 +24,7 @@ app.use("/board", boardApi)
 const commentApi = require("./src/routers/comment")
 app.use("/comment", commentApi)
 
-// 테스트용
+// 테스트용 -> 나중에 지우자
 const testApi = require("./src/routers/test")
 app.use("/test", testApi)
 
