@@ -91,7 +91,7 @@ function checkName(name){
 // 생일 체크
 function checkBirth(birth){
     if(!birth || birth == "" || birth == undefined){
-        throw new Error("생년월일을 입력하세요. !!!!!")
+        throw new Error("생년월일을 입력하세요.")
     }
 
 }
