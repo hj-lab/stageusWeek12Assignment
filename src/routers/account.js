@@ -1,5 +1,5 @@
 const router = require("express").Router()
-const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx, checkDuplicateId } = require('../modules/check');
+const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx, checkDuplicateId, checkPwMatch } = require('../modules/check');
 const conn = require("../../config/database")
 
 // 회원가입, 로그인, 로그아웃, id찾기, pw찾기, 정보 보기(나, 다른사람), 내 정보 수정, 회원 탈퇴
@@ -7,7 +7,7 @@ const conn = require("../../config/database")
 // 회원가입 기능 (완)
 router.post("/", async(req, res) => {
     // signUp에서 값 가져옴
-    const { id, pw, name, birth, tel } = req.body
+    const { id, pw, pwCheck, name, birth, tel } = req.body
 
     // 프론트에 전달할 값 미리 만들기
     const result = {
@@ -20,18 +20,17 @@ router.post("/", async(req, res) => {
        // 예외처리
        checkId(id)
        checkPw(pw)
+       checkPwMatch(pw,pwCheck)
        checkName(name)
        checkBirth(birth)
        checkTel(tel)
-
-       // 비동기함수 query
-       const isDuplicateId = await checkDuplicateId(id);
-
+       // 비동기함수 id중복check
+       await checkDuplicateId(id)
        // DB통신
        const sql = "INSERT INTO account(id, pw, name, birth, tel) VALUES(?, ?, ?, ?, ?)";
        const values = [id, pw, name, birth, tel];
 
-       conn.query(sql, values, (err, dbResult) => {
+       conn.query(sql, values, (err, rows) => {
            if(err){
                 result.message = "DB 통신 에러";
                 res.status(500).json(result);
@@ -39,7 +38,13 @@ router.post("/", async(req, res) => {
            else{
                 result.success = true
                 result.message = "DB 통신 성공"
-                result.data = dbResult
+                result.data = {
+                    "id" : id,
+                    "pw" : pw,
+                    "name" : name,
+                    "birth" : birth,
+                    "tel" : tel
+                }
                 res.send(result)
            }
        })
@@ -50,7 +55,7 @@ router.post("/", async(req, res) => {
    }
 })
 
-// 로그인 기능 (완..? 세션 확인 필요)
+// 로그인 기능
 router.post("/login", (req, res) => {
     //logIn에서 값 가져옴
     const { id, pw } = req.body;
@@ -68,7 +73,6 @@ router.post("/login", (req, res) => {
         checkPw(pw)
         
         // DB 통신 - id, pw와 같은 사용자가 있는지
-        // idx, id, pw, name, birth, tel 가져옴
         const sql = "SELECT * FROM account WHERE id = ? AND pw = ?";
         const values = [id, pw];
 
@@ -83,7 +87,6 @@ router.post("/login", (req, res) => {
                 res.status(400).json(result);
                 return;
             }
-            // 일치하는 유저가 있을시 (성공시)
             // 해당하는 유저의 정보를 담음 (id, pw, name ...)
             const user = rows[0]
 
@@ -102,14 +105,13 @@ router.post("/login", (req, res) => {
             res.json(result);
         })
      
-
     }catch(e){
         result.message = e.message
         res.status(400).json(result);
     }
 })
 
-// 로그아웃 기능 (완..? 세션 확인 필요)
+// 로그아웃 기능 
 router.delete("/logout", (req, res) => {
     const result = {
         success: false,
@@ -158,7 +160,6 @@ router.get("/find/id", (req, res) =>{
         checkTel(tel)
 
         // DB 통신 (DB에서 가져온 값이 findId에서 가져온 값이랑 같은지 비교)
-        // id반환
         const sql = "SELECT id FROM account WHERE name = ? AND birth = ? AND tel = ?";
         const values = [name, birth, tel];
 
@@ -246,9 +247,6 @@ router.get("/find/pw", (req, res) => {
 
 // 내 정보 보기 기능 - session (query?)
 router.get("/", (req, res) => {
-    // 세션에서 내 정보 가져옴
-    // const { userIdx, userId, userName, userBirth, userTel } = req.session;
-
     // 프론트에 전달할 값 미리 만들기
     const result = {
         success : false,
@@ -277,7 +275,7 @@ router.get("/", (req, res) => {
     }
 })
 
-// 다른 사람 정보 보기 (완)
+// 다른 사람 정보 보기
 router.get("/:idx", (req, res) => {
     const otherIdx = req.params.idx;
 
@@ -320,10 +318,10 @@ router.get("/:idx", (req, res) => {
         }
 })
 
-// 내 정보 수정 기능 - path parameter ('나' 만 가져와야하니까) (완)
+// 내 정보 수정 기능 - path parameter 
 router.put("/", (req, res) => {
     // modifyMyInform에서 수정할 정보 가져옴
-    const { pw, name, birth, tel} = req.body;
+    const { pw, pwCheck, name, birth, tel} = req.body;
 
     // 프론트에 전달할 값 미리 만들기
     const result = {
@@ -336,6 +334,7 @@ router.put("/", (req, res) => {
        // 예외처리
        checkSession(req)
        checkPw(pw)
+       checkPwMatch(pw, pwCheck)
        checkName(name)
        checkBirth(birth)
        checkTel(tel)
@@ -355,7 +354,7 @@ router.put("/", (req, res) => {
             }
 
             if (!rows || rows.length == 0) {
-                result.message = "해당 사용자 정보를 찾을 수 없습니다.";
+                result.message = "해당 사용자 정보를 찾을 수 없거나 수정 권한이 없습니다.";
                 res.status(404).json(result);
                 return;
             }
@@ -408,7 +407,7 @@ router.delete("/", (req, res) =>{
             }
 
             if (!rows || rows.length == 0) {
-                result.message = "해당 사용자 정보를 찾을 수 없습니다.";
+                result.message = "해당 사용자 정보를 찾을 수 없거나 탈퇴 권한이 없습니다.";
                 res.status(404).json(result);
                 return;
             }

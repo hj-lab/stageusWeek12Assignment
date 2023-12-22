@@ -27,22 +27,6 @@ function checkId(id) {
 
 }
 
-
-// ID 중복 체크 (앞에 async 써야하나?)
-// function checkDuplicateId(id) {
-//     const sql = 'SELECT id FROM account WHERE id = ?';
-
-//     conn.query(sql, [id], (err, rows) => {
-//         if (err) {
-//             throw new Error("Id 중복 체크 조회 중 오류 발생");
-//         }
-//         if (rows) {
-//             throw new Error("중복된 ID입니다.");
-//         }
-//     });
-// }
-
-
 // ID 중복 체크 함수 (Promise 기반)
 async function checkDuplicateId(id) {
     return new Promise((resolve, reject) => {
@@ -61,6 +45,7 @@ async function checkDuplicateId(id) {
     });
 }
 
+
 // PW 체크
 function checkPw(pw) {
     const pwLengh = pw.length
@@ -75,6 +60,11 @@ function checkPw(pw) {
 }
 
 // PW, PWcheck 같은지 체크
+function checkPwMatch(pw, pwCheck){
+    if(pw != pwCheck){
+        throw new Error("pw와 pwCheck가 일치하지 않습니다.")
+    }
+}
 
 // 이름 체크
 function checkName(name){
@@ -122,4 +112,4 @@ function checkIdx(idx){
 }
 
 
-module.exports = { checkSession, checkId, checkDuplicateId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx }
+module.exports = { checkSession, checkId, checkDuplicateId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx, checkPwMatch }

@@ -24,10 +24,6 @@ app.use("/board", boardApi)
 const commentApi = require("./src/routers/comment")
 app.use("/comment", commentApi)
 
-// 테스트용 -> 나중에 지우자
-const testApi = require("./src/routers/test")
-app.use("/test", testApi)
-
 // 웹서버
 app.listen(port, () => {
     console.log(`assignMent 파일의 ${port}번에서 서버 실행`)

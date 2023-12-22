@@ -4,7 +4,7 @@ const conn = require("../../config/database")
 
 // 댓글 쓰기, 읽기, 수정, 삭제
 
-// 댓글 쓰기 기능
+// 댓글 쓰기 기능 (완)
 router.post("/", (req, res) =>{
     // 글 내용 받아오기
     const {contents, boardIdx} = req.body
@@ -54,17 +54,16 @@ router.post("/", (req, res) =>{
         });
     }catch(e){
         result.message = e.message
+        res.status(400).json(result)
     }
 })
 
 // 댓글 읽기 기능 - query string (필터링, 정렬)
-router.get("/:idx", (req, res) => {
+router.get("/", (req, res) => {
     // 세션값 받아오기
     const sessionIdx = req.session.userIdx;
     // 읽고자 하는 댓글이 있는 게시글의 idx 가져옴
     const boardIdx = req.query.boardIdx;
-    // 댓글의 idx
-    const commentIdx = req.params.idx;
 
     const result = {
         success : false,
@@ -76,36 +75,41 @@ router.get("/:idx", (req, res) => {
         //예외처리
         checkSession(req)
         checkIdx(boardIdx)
-        checkIdx(commentIdx)
 
         // db 통신 -> boardnum_fk = boardnum 인 댓글 다 가져오기
+        const sql = "SELECT * FROM comment WHERE boardnum_fk = ?";
+        
+        conn.query(sql, [boardIdx], (err, rows) => {
+            if (err) {
+                result.message = "댓글 읽기 실패";
+                res.status(500).json(result);
+                return;
+            }
 
-        // if(댓글 가져오기 성공시)
-        result.success = true;
-        result.message = "댓글 읽기 성공"
-        result.data = {
-            boardnum_fk : boardnum, // 게시글 번호
-            commentnum_pk : commentnum_pk, // 댓글 번호
-            accountid_fk : id, // 내 id
-            contents : contents, // 내용
-            createAt : createAt // 생성일시
-        };
+            // 해당하는 게시글의 댓글이 없는 경우
+            if (rows.length == 0) {
+                result.message = "해당하는 댓글이 없습니다.";
+                res.status(404).json(result);
+                return;
+            }
 
-        //if(db통신 실패시) throw new Error("db통신실패")
-
+            // 댓글 가져오기 성공시
+            result.success = true;
+            result.message = "댓글 읽기 성공";
+            result.data = rows
+            res.json(result);
+        });
     }catch(e){
         result.message = e.message
-    }finally{
-        // 최종적으로 실행되는거 (try, catch 둘중 뭐든 실행하고 나면)
-        res.send(result)
+        res.status(400).json(result)
     }
 })
 
-// 댓글 수정 기능 - path parameter (댓글 번호 가져와서 그거 수정)
+// 댓글 수정 기능 - path parameter (댓글 번호 가져와서 그거 수정) (완)
 router.put("/:idx", (req, res) => {
     // 수정하고자 하는 댓글의 commentnum_pk 가져옴
     const commentIdx = req.params.idx;
-    const contents  = req.body;
+    const {contents}  = req.body;
 
     // 프론트에 전달할 값 미리 만들기
     const result = {
@@ -120,27 +124,43 @@ router.put("/:idx", (req, res) => {
         checkIdx(commentIdx)
         checkBlank(contents)
 
+        const myId = req.session.userId;
+
         // db 통신 -> commentnum_pk에 해당하는 댓글 가져와서 contents 수정
+        const sql = "UPDATE comment SET contents = ? WHERE commentnum_pk = ? AND accountid_fk = ?";
+        const values = [contents, commentIdx, myId];
 
-        // if(수정 성공시) accountid_fk = sessionIdx 본인일시
-        result.success = true;
-        result.message = "댓글 수정 성공";
-        result.data = {
-            contents : contents
-        };
+        conn.query(sql, values, (err, rows) => {
+            if (err) {
+                result.message = "댓글 수정 DB 통신 오류 발생";
+                res.status(500).json(result);
+                return;
+            }
 
-        //if(db통신 실패시) throw new Error("db통신실패")
+            // 수정된 댓글이 없는 경우
+            if (rows.affectedRows == 0) {
+                result.message = "해당 댓글을 찾을 수 없습니다.";
+                res.status(404).json(result);
+                return;
+            }
+
+            // 댓글 수정 성공
+            result.success = true;
+            result.message = "댓글 수정 성공";
+            result.data = {
+                contents: contents
+            };
+            res.json(result);
+        });
 
     }catch(e){
         result.message = e.message
-    }finally{
-        // 최종적으로 실행되는거 (try, catch 둘중 뭐든 실행하고 나면)
-        res.send(result)
+        res.status(400).json(result)
     }
 
 })
 
-// 댓글 삭제 기능 - path parameter
+// 댓글 삭제 기능 - path parameter (완)
 router.delete("/:idx", (req, res) => {
     const commentIdx = req.params.idx;
 
@@ -154,20 +174,33 @@ router.delete("/:idx", (req, res) => {
         // 예외처리
         checkSession(req)
         checkIdx(commentIdx)
+
+        const myId = req.session.userId;
        
         // db 통신 -> commentnum_pk에 해당하는 댓글 삭제
+        const sql = "DELETE FROM comment WHERE commentnum_pk = ? AND accountId_fk = ?";
+        const values = [commentIdx, myId];
+        
+        conn.query(sql, values, (err, rows) => {
+            if (err) {
+                result.message = "댓글 삭제 실패";
+                res.status(500).json(result);
+                return;
+            }
 
-        // if(삭제 성공시) accountid_fk = sessionIdx 본인일 경우
-        result.success = true;
-        result.message = "댓글 삭제 성공";
-    
-        //if(db통신 실패시) throw new Error("db통신실패")
+            if (rows.affectedRows == 0) {
+                result.message = "해당하는 댓글이 없거나 삭제 권한이 없습니다.";
+                res.status(404).json(result);
+                return;
+            }
 
+            result.success = true;
+            result.message = "댓글 삭제 성공";
+            res.json(result);
+        });
+        
     }catch(e){
         result.message = e.message
-    }finally{
-        // 최종적으로 실행되는거 (try, catch 둘중 뭐든 실행하고 나면)
-        res.send(result)
     }
 
 })

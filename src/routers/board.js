@@ -4,7 +4,7 @@ const conn = require("../../config/database")
 
 // 게시글 쓰기, 읽기(전체, 개별), 수정, 삭제
 
-// 게시글 쓰기 기능 (완)
+// 게시글 쓰기 기능
 router.post("/", (req, res) =>{
     // 글 내용 받아오기
     const {title, contents} = req.body
@@ -45,10 +45,11 @@ router.post("/", (req, res) =>{
             result.success = true;
             result.message = "게시글 쓰기 성공";
             result.data = {
-                //boardnum_pk: resultDB.insertId, // 삽입된 게시글의 ID (auto_increment)
+                boardnum_pk: rows.insertId, // 삽입된 게시글의 ID (auto_increment)
                 accountid_fk: userId, // 세션의 사용자 ID나 idx
                 title: title,
-                contents: contents
+                contents: contents,
+                createAt: new Date().toISOString() // 현재 시간
             };
             res.json(result);
         });
@@ -61,7 +62,7 @@ router.post("/", (req, res) =>{
 
 // 게시글 읽기 기능 (전체 목록 보는 board, 개별 post 보는 showpost)
 
-// 전체 목록 보는 board (완)
+// 전체 목록 보는 board
 router.get("/all", (req,res) => {
     // 프론트에 전달할 값 미리 만들기
     const result = {
