@@ -9,4 +9,4 @@ const conn = maria.createConnection({
 })
 
 module.exports = conn
-// 다른 파일에서도 conn 쓰겠다
+// 다른 파일에서도 쓰겠다

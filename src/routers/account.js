@@ -320,7 +320,7 @@ router.get("/:idx", (req, res) => {
         }
 })
 
-// 내 정보 수정 기능 - path parameter ('나' 만 가져와야하니까) (완..? 세션 확인 필요 그냥 idx params로 받아서 하면 됐음)
+// 내 정보 수정 기능 - path parameter ('나' 만 가져와야하니까) (완)
 router.put("/", (req, res) => {
     // modifyMyInform에서 수정할 정보 가져옴
     const { pw, name, birth, tel} = req.body;
@@ -334,15 +334,14 @@ router.put("/", (req, res) => {
 
    try{
        // 예외처리
-       //checkSession(req)
+       checkSession(req)
        checkPw(pw)
        checkName(name)
        checkBirth(birth)
        checkTel(tel)
 
        // 현재 세션 idx
-        const myIdx = req.session.userIdx;
-       //const myIdx = req.params.idx;
+       const myIdx = req.session.userIdx;
 
        // db 통신 -> db data를 수정할 정보로 바꿔줌
        const sql = "UPDATE account SET pw=?, name=?, birth=?, tel=? WHERE accountnum_pk = ?";

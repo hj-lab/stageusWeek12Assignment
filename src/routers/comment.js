@@ -1,5 +1,6 @@
 const router = require("express").Router() 
 const { checkSession, checkId, checkPw, checkName, checkBirth, checkTel, checkBlank, checkIdx } = require('../modules/check');
+const conn = require("../../config/database")
 
 // 댓글 쓰기, 읽기, 수정, 삭제
 
@@ -23,24 +24,36 @@ router.post("/", (req, res) =>{
 
         // db 통신 -> 
         // comment table에 등록
+        const sql = "INSERT INTO comment (boardnum_fk, accountid_fk, contents) VALUES (?, ?, ?)";
+        const values = [boardIdx, req.session.userId, contents];
 
-        // if(글쓰기 성공시)
-        result.success = true;
-        result.message = "글쓰기 성공";
-        result.data = { // board table의 값 저장
-            "boardnum_fk" : boardnum_fk,
-            "commentnum_pk" : commentnum_pk, // auto_increment
-            "accountid_fk" : id, // 세션의 id
-            "contents" : contents,
-            "createAt" : createAt
-        };
+        conn.query(sql, values, (err, resultDB) => {
+            if (err) {
+                result.message = "댓글 쓰기 DB 통신 오류 발생";
+                res.status(500).json(result);
+                return;
+            }
 
-        //if(db통신 실패시) throw new Error("db통신실패")
+            if (resultDB.affectedRows == 0) {
+                result.message = "댓글을 추가할 수 없습니다.";
+                res.status(404).json(result);
+                return;
+            }
 
+            // 댓글 추가 성공시
+            result.success = true;
+            result.message = "댓글 쓰기 성공";
+            result.data = {
+                boardnum_fk: boardIdx,
+                commentnum_pk: resultDB.insertId, // 삽입된 댓글의 ID (auto_increment)
+                accountid_fk: req.session.userId, // 세션의 사용자 ID
+                contents: contents,
+                createAt: new Date().toISOString() // 현재 시간
+            };
+            res.json(result);
+        });
     }catch(e){
         result.message = e.message
-    }finally{
-        res.send(result)
     }
 })
 
